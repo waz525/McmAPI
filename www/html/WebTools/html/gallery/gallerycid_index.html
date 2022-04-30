@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,initial-scale=1.0,width=device-width"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>Hello APP</title>
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/aui.2.0.css" />
+</head>
+<body>
+	
+		<header class="aui-bar aui-bar-nav" id="header">
+			<a class="aui-pull-left aui-btn" tapmode onclick="back()"> <span class="aui-iconfont aui-icon-left"></span> </a>
+			<div class="aui-title">
+				图库
+			</div>
+		</header>
+		
+<div id="tools" class="aui-content aui-margin-b-15">
+	<ul class="aui-list aui-form-list">
+		<li class="aui-list-item">
+			<div class="aui-list-item-inner">
+				<div class="aui-list-item-label">GalleryHost:</div>
+				<div class="aui-list-item-input">
+					<input type="text" v-model="GalleryHost">
+				</div>
+			</div>
+		</li>
+	</ul>
+
+	<ul class="aui-list aui-form-list">
+		<li class="aui-list-item">
+			<div class="aui-list-item-inner">
+				<div class="aui-list-item-label">mmsite:</div>
+				<div class="aui-list-item-input">
+					<input type="text" v-model="mmsite">
+				</div>
+			</div>
+		</li>
+	</ul>
+        <ul class="aui-list aui-form-list">
+                <li class="aui-list-item">
+                        <div class="aui-list-item-inner">
+                                <div class="aui-list-item-label">limitnum:</div>
+                                <div class="aui-list-item-input">
+                                        <input type="text" v-model="limitnum">
+                                </div>
+                        </div>
+                </li>
+        </ul>
+        <ul class="aui-list aui-form-list">
+                <li class="aui-list-item">
+                        <div class="aui-list-item-inner">
+                                <div class="aui-list-item-label">imgPagesize:</div>
+                                <div class="aui-list-item-input">
+                                        <input type="text" v-model="imgPagesize">
+                                </div>
+                        </div>
+                </li>
+        </ul>
+
+<div style="text-align: center;" class="aui-content-padded">
+    <div class="aui-btn aui-btn-primary" @click="clkOk" >确定</div>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <div class="aui-btn aui-btn-primary" @click="reset" >重置</div>
+</div>
+</div>
+
+
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/vue.min.js"></script>
+<script type="text/javascript">
+		//未登陆即跳转到首页
+		if( ! localStorage.getItem('uid') ) {
+			location.href="../../index.html"; 
+		}
+		
+    (function(){
+		
+		var GalleryHost = localStorage.getItem('GalleryHost');
+		var mmsite = localStorage.getItem('mmsite') ;
+		var limitnum  = localStorage.getItem('limitnum') ;
+		var imgPagesize = localStorage.getItem('imgPagesize') ;
+		if( ! GalleryHost ) {
+			GalleryHost= "http://61.155.203.88:8082" ;
+		}
+		if( ! mmsite ) {
+			mmsite = 'mmonly' ;
+		}
+		if( ! limitnum ) {
+			limitnum = '4'
+		} 
+		if( ! imgPagesize ) {
+			imgPagesize = '4'
+		} 
+		
+		
+        new Vue({
+            el: '#tools',
+            data: {
+                GalleryHost: GalleryHost,
+				mmsite: mmsite,
+				imgPagesize:imgPagesize,
+				limitnum: limitnum
+            },
+            mounted () {
+                canvas.innerHTML = createHTML();
+                TagCanvas.Start('myCanvas', '', {
+                    textColour: null,
+                    initial: speed(),
+                    dragControl: 1,
+                    textHeight: 14
+                });
+            },
+            methods: {
+                clkOk: function(){
+					//localStorage.clear();                    
+					localStorage.setItem("GalleryHost", this.GalleryHost);
+					localStorage.setItem("mmsite", this.mmsite);
+					localStorage.setItem("limitnum", this.limitnum);
+					localStorage.setItem("imgPagesize", this.imgPagesize);
+					location.href='./gallerycid_list.html'; 
+                },
+                reset: function(){
+					this.GalleryHost= "http://61.155.203.114:8082" ;
+					this.mmsite = 'mmonly' ;
+					this.limitnum = '4' ;
+					this.imgPagesize = '4' ;
+                }
+			}
+		});
+		
+		
+	})();
+	
+	
+		function back() {
+			window.history.go(-1);
+		}
+</script>
+</html>

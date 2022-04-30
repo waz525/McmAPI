@@ -1,0 +1,450 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<link rel="stylesheet" type="text/css" href="../../css/api.css"/>
+		<link rel="stylesheet" type="text/css" href="../../css/aui.css" />
+		<meta charset="utf-8">
+		<meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+		<meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+		<link rel="stylesheet" type="text/css" href="../../css/aui.2.0.css" />
+		<title>课程信息</title>
+	</head>
+	<body>
+
+
+			<div class="aui-content aui-margin-b-15" id="ClassInfoDiv">
+				<ul class="aui-list aui-list-in" id="ClassInfoHeadUl">
+					<div class='aui-list-item-inner'>
+						<div class='aui-list-item-title'>课程名</div>
+						<div class='aui-list-item-title'>总课时</div>
+						<div class='aui-list-item-title'>已上课时</div>
+						<div class='aui-list-item-title'>上课</div>
+						<div class='aui-list-item-title'>删除</div>
+						<div class='aui-list-item-title'>详情</div>
+					</div>
+				</ul>
+				<ul class="aui-list aui-list-in" id="ClassInfoUl">
+				</ul>
+			</div>
+
+
+			<div class="aui-content aui-margin-b-15" id="ClassAddDiv">
+				<div class="aui-btn aui-btn-block aui-btn-primary" tapmode onclick="ClassAdd()">新增课程</div>
+			</div>
+
+			<div class="aui-content aui-margin-b-15" id="StudyInfoDiv"  style="display:none;">
+				<ul class="aui-list aui-list-in" id="StudyInfoHeadUl">
+					<div class='aui-list-item-inner'>
+						<div class='aui-list-item-title'>课程名</div>
+						<div class='aui-list-item-title'>上课日期</div>
+						<div class='aui-list-item-title'>课时</div>
+						<div class='aui-list-item-title'>删除</div>
+					</div>
+				</ul>
+				<ul class="aui-list aui-list-in" id="StudyInfoUl">
+				</ul>
+				<p>
+				<div class="aui-content aui-margin-b-15" id="">
+					<div class="aui-btn aui-btn-block aui-btn-primary" tapmode onclick="ShowClassList()">返回课程列表</div>
+				</div>
+			</div>
+
+
+	</body>
+	<script type="text/javascript" src="../../script/api.js" ></script>
+	<script type="text/javascript" src="../../script/jquery-3.1.0.js"></script>
+	<script type="text/javascript" src="../../script/jquery.min.js"></script>
+	<script type="text/javascript" src="../../script/sha1.js"></script>
+	<script type="text/javascript" src="../../script/aui-dialog.js" ></script>
+	<script type="text/javascript" src="../../script/aui-toast.js" ></script>
+	<script type="text/javascript">
+		var ClassInfoData = null ;
+		var ServerHost = localStorage.getItem('ServerHost');
+		var ServerHost = "https://www.fhtsc.club:8477";
+		var addStudyClassid= -1;
+			var now = Date.now();
+			//设置ajax的头部属性
+			$.ajaxSetup({
+				"cache" : false,
+				"async" : false
+			});
+
+		var msgCount = 0 ;
+
+		 var toast = new auiToast({})
+
+
+		apiready = function() {
+		}
+			getClassInfo();
+		//新增课程
+	function ClassAdd() {
+		var dialog = new auiDialog({})
+		dialog.prompt({
+			title : "请输入新课程名称",
+			text : "",
+			buttons : ['确定','取消']
+		}, function(rst, err) {
+			if( rst.buttonIndex == 1 ) {
+				if( rst.text.length > 0 ) {
+					classname = rst.text ;
+					dialog.prompt({
+						title : "请输入新课程总课时",
+						text : "",
+						buttons : ['确定','取消']
+					}, function(rst1, err) {
+						if( rst1.buttonIndex == 1 ) {
+							if( rst1.text.length > 0 ) {
+								alltimes = rst1.text ;
+								var now = new Date();
+								var nowdate = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate() + " " + now.getHours() + ":" + now.getMinutes() + ":" + now.getSeconds() ;
+								$.ajax({
+									"url" : ServerHost+"/mcm/api/ClassInfo",
+									"type": "POST",
+									"data": {
+										"userid": "X4033",
+										"classname":classname,
+										"studytimes":"0",
+										"alltimes":alltimes ,
+										"createdAt": nowdate
+									},
+									success : function(data, status, header) {
+										//alert(JSON.stringify(data)
+										getClassInfo();
+									},
+									error : function() {
+										alert("新增课程出错");
+									}
+								});
+
+
+							} else {
+								alert("课程总课时输入有误！")
+							}
+						}
+					});
+
+
+
+				} else {
+					alert("课程名称输入有误！")
+				}
+			}
+		});
+
+
+
+
+		}
+
+		//从服务端获取课程列表，并展示
+		function getClassInfo() {
+			$("#ClassInfoDiv").show();
+			$("#ClassAddDiv").hide();
+			$("#StudyInfoDiv").hide();
+			var ul = document.getElementById("ClassInfoUl");
+			ul.innerHTML="" ;
+
+				filter = {
+					'order' : 'createdAt DESC',
+					'limit' : 1000,
+					'where' : {
+						'userid': "X4033"
+					}
+				};
+
+			$.ajax({
+				"url" : ServerHost+"/mcm/api/ClassInfo?filter=" + encodeURIComponent(JSON.stringify(filter)),
+				success : function(data, status, header) {
+					if (data.length > 0) {
+						ClassInfoData = data ;
+
+						for( var i = 0 ; i < data.length ; i++ ) {
+							var li = document.createElement("li");
+							var li_css = document.createAttribute("class");
+							li_css.nodeValue = "aui-list-item";
+							li.setAttributeNode(li_css);
+							li.innerHTML = "<div class='aui-list-item-inner'>"+
+								"<div class='aui-list-item-title'>"+data[i].classname+
+								"</div><div class='aui-list-item-title'>"+AddSpace(data[i].alltimes)+
+								"</div><div class='aui-list-item-title'>"+AddSpace(data[i].studytimes)+
+								"</div><div class='aui-list-item-title' onclick='addStudy("+i+")'><i class='aui-iconfont aui-icon-plus'></i>"+
+								"</div><div class='aui-list-item-title' onclick='delClass("+i+")'><i class='aui-iconfont aui-icon-close'></i>"+
+								"</div><div class='aui-list-item-title' onclick='showStudy("+i+")'><i class='aui-iconfont aui-icon-more'></i>"+
+								"</div></div>";
+							ul.appendChild(li);
+						}
+						toast.success({
+							title:'加载完成',
+							duration:1000
+						});
+					} else {
+
+																		toast.success({
+																			title:'没有课程',
+												              duration:1000
+																		});
+					}
+
+					$("#ClassAddDiv").show();
+				},
+				error : function() {
+					alert("查询接口错误");
+				}
+			});
+
+		}
+
+		function ShowClassList(){
+                                                getClassInfo();
+
+						$("#ClassInfoDiv").show();
+						$("#ClassAddDiv").show();
+						$("#StudyInfoDiv").hide();
+
+		}
+
+		//展示课程记录
+		function showStudy(ind) {
+
+			var classname = ClassInfoData[ind].classname ;
+
+			if ( parseInt(ClassInfoData[ind].studytimes) == 0 ) {
+				alert( "《"+classname+"》 没有上课记录！" ) ;
+				return ;
+			}
+
+
+			$("#ClassInfoDiv").hide();
+			$("#ClassAddDiv").hide();
+			$("#StudyInfoDiv").show();
+
+			var ul = document.getElementById("StudyInfoUl");
+			ul.innerHTML="" ;
+
+				filter = {
+					'order' : 'createdAt DESC',
+					'limit' : 1000,
+					'where' : {
+						'classid': ClassInfoData[ind].id
+					}
+				};
+
+
+			$.ajax({
+				"url" : ServerHost+"/mcm/api/StudyInfo?filter=" + encodeURIComponent(JSON.stringify(filter)),
+				success : function(data, status, header) {
+					if (data.length > 0) {
+
+						for( var i = 0 ; i < data.length ; i++ ) {
+							var li = document.createElement("li");
+							var li_css = document.createAttribute("class");
+							li_css.nodeValue = "aui-list-item";
+							li.setAttributeNode(li_css);
+							li.innerHTML = "<div class='aui-list-item-inner'>"+
+								"<div class='aui-list-item-title'>"+classname+
+								"</div><div class='aui-list-item-title'>"+data[i].studyat+
+								"</div><div class='aui-list-item-title'>"+AddSpace(data[i].studytime)+
+								"</div><div class='aui-list-item-title' onclick='delStudy("+ind+", \""+data[i].id+"\", \""+data[i].studytime+"\",\""+data[i].studyat+"\")'><i class='aui-iconfont aui-icon-close'></i>"+
+								"</div></div>";
+							ul.appendChild(li);
+						}
+
+					} else {
+						alert("没有查询到上课信息！！！");
+					}
+				},
+				error : function() {
+					alert("查询接口错误");
+				}
+			});
+
+
+		}
+
+		//删除上课记录
+		function delStudy(ind, sid, studytime,studyat) {
+			var dialog = new auiDialog({})
+			dialog.alert({
+				title : "警告" ,
+				msg : "确定要删除《"+ClassInfoData[ind].classname+"》在 "+studyat+" 的 "+studytime+" 课时,删除后不可恢复 ?",
+				buttons : ['确定','取消']
+			}, function(rst, err) {
+				if( rst.buttonIndex == 1 ) {
+					var studytimes = parseInt(ClassInfoData[ind].studytimes) ;
+					studytimes = studytimes - parseInt(studytime) ;
+
+					$.ajax({
+						"url" : ServerHost+"/mcm/api/ClassInfo/"+ClassInfoData[ind].id,
+						"type": "POST",
+						"data": {
+							"studytimes":""+studytimes,
+							"_method":"PUT"
+						},
+						success : function(data, status, header) {
+							//alert(JSON.stringify(data))
+							$.ajax({
+								"url" : ServerHost+"/mcm/api/StudyInfo/"+sid,
+								"type": "POST",
+								"data": {
+									"_method":"DELETE"
+								},
+								success : function(data, status, header) {
+									//alert(JSON.stringify(data))
+
+									toast.success({
+										title:'更新课程信息成功',
+			              duration:1000
+									});
+									if( studytimes > 0 ) {
+										showStudy(ind);
+									} else {
+										getClassInfo();
+									}
+								},
+								error : function() {
+									alert("更新课程信息出错002");
+								}
+							});
+						},
+						error : function() {
+							alert("更新上课信息出错001");
+						}
+					});
+				}
+			});
+		}
+
+
+		//删除课程
+		function delClass(ind) {
+			var dialog = new auiDialog({})
+			dialog.alert({
+				title : "警告" ,
+				msg : "确定要删除《"+ClassInfoData[ind].classname+"》,删除后不可恢复 ?",
+				buttons : ['确定','取消']
+			}, function(rst, err) {
+				if( rst.buttonIndex == 1 ) {
+
+
+								$.ajax({
+									"url" : ServerHost+"/mcm/api/ClassInfo/"+ClassInfoData[ind].id,
+									"type": "POST",
+									"data": {
+										"_method":"DELETE"
+									},
+									success : function(data, status, header) {
+										//alert(JSON.stringify(data))
+
+										toast.success({
+											title:'更新课程信息成功',
+				              duration:1000
+										});
+										getClassInfo();
+									},
+									error : function() {
+										alert("更新课程信息出错002");
+									}
+								});
+				}
+			});
+		}
+
+		//增加上课记录
+		function addStudy(ind) {
+			var dialog = new auiDialog({});
+			var now = new Date();
+			var sdate = now.getFullYear() + "-" + AddZero(now.getMonth() + 1) + "-" + AddZero(now.getDate());
+			dialog.prompt({
+				title : "请输入本次上课时间",
+				text : sdate,
+				buttons : ['确定','取消']
+			}, function(ret, err) {
+				if( ret.buttonIndex == 1 ) {
+					//alert(JSON.stringify(ret))
+					if( ret.text.length > 0 ) sdate =ret.text;
+
+					dialog.prompt({
+							title : "请输入本次课时数",
+							text : "1",
+							buttons : ['确定','取消']
+						}, function(rst, err) {
+							if( rst.buttonIndex == 1 ) {
+								studytime="1" ;
+								if( rst.text.length > 0 ) studytime =rst.text;
+
+								var studytimes = parseInt(ClassInfoData[ind].studytimes) ;
+								studytimes = studytimes + parseInt(studytime) ;
+
+								var nowdate = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate() + " " + now.getHours() + ":" + now.getMinutes() + ":" + now.getSeconds() ;
+
+								$.ajax({
+									"url" : ServerHost+"/mcm/api/StudyInfo",
+									"type": "POST",
+									"data": {
+										"classid":ClassInfoData[ind].id,
+										"studytime":studytime,
+										"studyat":sdate,
+										"createdAt": nowdate
+									},
+									success : function(data, status, header) {
+										//alert(JSON.stringify(data))
+										$.ajax({
+											"url" : ServerHost+"/mcm/api/ClassInfo/"+ClassInfoData[ind].id,
+											"type": "POST",
+											"data": {
+												"studytimes":""+studytimes,
+												"_method":"PUT"
+											},
+											success : function(data, status, header) {
+												//alert(JSON.stringify(data))
+
+												toast.success({
+													title:'更新课程信息成功',
+													duration:1000
+												});
+												getClassInfo();
+											},
+											error : function() {
+												alert("更新上课信息出错002");
+											}
+										});
+									},
+									error : function() {
+										alert("更新上课信息出错001");
+									}
+								});
+
+
+
+							}
+						});
+				}
+			});
+	}
+
+
+		function AddZero(n) {
+			if (n < 10) {
+				return '0' + n;
+			}
+			return '' + n;
+		}
+
+		function AddSpace(n) {
+			var rst = String(n) ;
+			var j = 3 - rst.length  ;
+
+			if( j > 0 ) {
+				for( var i = 0 ; i < j; i++)  {
+					rst = "&nbsp;"+rst;
+				}
+				//alert("rst:"+rst)
+			}
+
+			return rst;
+		}
+
+
+	</script>
+</html>

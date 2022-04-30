@@ -1,0 +1,292 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,initial-scale=1.0,width=device-width"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>主题列表</title>
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+	<link rel="stylesheet" type="text/css" href="../../css/aui.2.0.css" />
+
+</head>
+<body>
+
+
+                <header class="aui-bar aui-bar-nav" id="header">
+                        <a class="aui-pull-left aui-btn" tapmode onclick="back()"> <span class="aui-iconfont aui-icon-left"></span> </a>
+                        <div class="aui-title" id='kbtitle' >
+                        </div>
+
+                </header>
+
+			<div class="aui-content aui-margin-b-15" id="kbCidDiv">
+				<ul class="aui-list aui-media-list" id="kbCidUl">
+				</ul>
+			</div>
+
+			<div class="aui-content aui-margin-b-15" id='bootDiv'>
+			    <ul class="aui-list aui-list-in">
+			        <li class="aui-list-item">
+			            <div class="aui-list-item-inner">
+			              <div class="aui-list-item-left aui-text-primary" id="pagenum" onclick="shownextpage()" >0/0</div>
+			              <div class="aui-list-item-left aui-text-primary" id="changeSkip"   onclick="changeSkip()">跳转</div>
+			              <div class="aui-list-item-left aui-text-primary" id="SearchStr"   onclick="SearchStr()">查询</div>
+			              <div class="aui-list-item-right"></div>
+			            </div>
+			        </li>
+				</ul>
+			</div>
+			<div style="z-index:999 ;width:64px; height: 64px; position:fixed;right:0;bottom:70px;background: url('../../image/up.png') no-repeat;" onclick="showlastpage()" ></div>
+			<div style="z-index:999 ;width:64px; height: 64px; position:fixed;right:0;bottom:0;background: url('../../image/down.png') no-repeat;"  onclick="shownextpage()" ></div>
+
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/jquery-3.1.0.js"></script>
+<script type="text/javascript" src="../../script/aui-toast.js" ></script>
+<script type="text/javascript">
+		//未登陆即跳转到首页
+		if( ! localStorage.getItem('uid') ) {
+			location.href="../../index.html"; 
+		}
+		
+
+	var GalleryHost = localStorage.getItem('GalleryHost');
+	var mmsite = localStorage.getItem('mmsite') ;
+	var limitnum = parseInt( localStorage.getItem('limitnum')) ;
+			var toast = new auiToast();
+
+	if( ! GalleryHost ) {
+		GalleryHost= "http://61.155.203.114:8082" ;
+	}
+	if( ! mmsite ) {
+		mmsite = 'mmonly' ;
+	}
+	if( ! limitnum ) {
+		limitnum = 4 ;
+	}
+
+	var skipnum = parseInt( localStorage.getItem(mmsite+"cid_list_skipnum")) ;	
+	if( !skipnum )  skipnum = 0 ;
+	var allCount= 0 ;
+	var titleSearch = "";
+	
+	$.ajaxSetup({
+		"cache" : false,
+		"async" : true
+	});
+	
+	
+	
+	
+	getAllCount();
+	showlist();
+	
+	    function SearchStr(){
+			var searchValue = prompt("输入关键词：",titleSearch);
+	        if(searchValue){
+	            //alert("您输入的内容是:"+searchValue);
+	            titleSearch = searchValue ;
+	            var ul = document.getElementById('kbCidUl');
+				ul.innerHTML=""
+				skipnum = 0
+				getAllCount()
+				showlist();
+	        } 
+	    }
+
+		//修改skip，进行快速分页
+		function changeSkip() {
+                                        a = parseInt(prompt("输入跳转条数("+allCount+")：",skipnum));
+                                        if( a >=0 ) {
+                                                skipnum = a ;
+                                                if( skipnum > allCount - limitnum) skipnum = allCount - limitnum ;
+												console.log("a:"+a+"; skipnum:"+skipnum+"; allCount:"+allCount)
+                                                var ul = document.getElementById('kbCidUl');
+                                                ul.innerHTML=""
+                                                showlist()
+                                        }
+
+		}
+
+	
+		//获取总条目数
+		function getAllCount() {
+			if ( titleSearch == "" ) {
+
+				filter = {
+						'order' : 'lasttime DESC'
+					};
+
+			} else {
+				filter = {
+						'where': {
+
+							'title': { 'like': titleSearch }
+						}
+					};
+			}
+			$.ajax({
+				"url" : GalleryHost+"/mcm/api/"+mmsite+"cid/count?filter=" + encodeURIComponent(JSON.stringify(filter)),
+				success : function(data, status, header) {
+					//alert(JSON.stringify(data))
+					allCount = parseInt(data.COUNT);
+					document.getElementById('pagenum').innerHTML= ""+skipnum+"/"+allCount ;
+				},
+				error : function() {
+					toast.fail({
+						title:"查询接口错误!",
+						duration:1000
+					});
+				}
+			});
+		}
+	
+		//显示上一页
+		function showlastpage() {
+			if( skipnum > 0  ) {
+				skipnum = skipnum-limitnum ;
+				if(skipnum < 0  ) {
+					skipnum = 0 ;
+				}
+				showlist();
+			} else {
+				toast.fail({
+						title:"已经是首页！",
+						duration:1000
+					});
+			}
+		}
+		//显示下一页
+		function shownextpage() {
+			if( skipnum + limitnum < allCount ) {
+				skipnum = skipnum+limitnum;
+				showlist();
+			} else {
+				toast.fail({
+						title:"已经是尾页！",
+						duration:1000
+					});
+			}
+		}
+		
+		//向列表里增加条目
+		function showlist() {
+			localStorage.setItem(mmsite+"cid_list_skipnum",skipnum);
+			
+			document.getElementById('pagenum').innerHTML= ""+skipnum+"/"+allCount ;
+			console.log("limitnum:"+limitnum+"; skipnum:"+skipnum+"; allCount:"+allCount+"; titleSearch:"+titleSearch+";")
+			
+			var ul = document.getElementById('kbCidUl');
+			ul.innerHTML=""
+			var filter ;
+			if ( titleSearch == "" ) {
+				filter = {
+						'order' : 'title',
+						'limit' : limitnum,
+						'skip' : skipnum
+					};
+			} else {
+				filter = {
+						'order' : 'title',
+						'limit' : limitnum,
+						'skip' : skipnum,
+						'where': {
+							'title': { 'like': titleSearch }
+						}
+					};
+			}
+			$.ajax({
+				"url" : GalleryHost+"/mcm/api/"+mmsite+"cid?filter=" + encodeURIComponent(JSON.stringify(filter)),
+				success : function(data, status, header) {
+					//alert(JSON.stringify(data))
+					if (data.length > 0) {
+						for( var i = 0 ; i < data.length ; i++ ) {
+
+							var li = document.createElement("li");
+							var li_css = document.createAttribute("class");
+							li_css.nodeValue = "aui-list-item";
+							li.setAttributeNode(li_css);
+							var li_onclick = document.createAttribute("onclick");
+							li_onclick.nodeValue = "showCid('" + data[i].cid +"')" ;
+							li.setAttributeNode(li_onclick);
+
+							li.innerHTML = '<div class="aui-media-list-item-inner"><div class="aui-list-item-inner">'+
+											'<div class="aui-list-item-text">' +
+												'<div class="aui-list-item-title">' + (data[i].title == ""?'[暂未获取]':data[i].title) + '</div>'+
+											'</div>'+
+											'</div></div>'+
+											'<div class="aui-info" style="padding-top:0">'+
+                    							'<div class="aui-info-item">'+
+                      							'<span class="aui-margin-l-5" >&nbsp<i class="aui-iconfont aui-icon-mail aui-text-info" id="mail_'+data[i].cid+'">0/0</i>&nbsp<i class="aui-iconfont aui-icon-like aui-text-danger" id="like_'+data[i].cid+'">0</i></span>'+
+                       						'</div><div class="aui-info-item">' + data[i].lasttime + '</div>'+
+              								 '</div>'
+
+							ul.appendChild(li);
+
+							getCidInfo(data[i].cid)
+						}
+
+					} else {
+						toast.fail({
+							title:"没有查询到信息！！！",
+							duration:1000
+						});
+					}
+				},
+				error : function() {
+						toast.fail({
+							title:"查询接口错误",
+							duration:1000
+						});
+				}
+			});
+		}
+
+		function getCidInfo(cid) {
+
+							filter = {
+							/*
+								'where': {
+									'zcount' : {'gte':'1'} ,
+									'cid': cid
+								}
+								*/
+
+								sql : "select c.cid, zcount , vcount ,acount from ( select cid,sum(zcount) as zcount from "+mmsite+" where  ( zcount >= '0' )  and  ( cid = '"+cid+"' ) group by cid ) a ,( select cid,count(1) as vcount from "+mmsite+" where  ( vcount = '0' )  and  ( cid = '"+cid+"' ) group by cid ) b ,( select cid,count(1) as acount from "+mmsite+" where  ( cid = '"+cid+"' ) group by cid ) c "
+							};
+
+							$.ajax({
+								"url" : GalleryHost+"/mcm/api/"+mmsite+"?filter=" + encodeURIComponent(JSON.stringify(filter)),
+							success : function(data, status, header) {
+								//alert(JSON.stringify(data))
+								if( data.length > 0 ){
+									span = document.getElementById("mail_"+data[0].cid);
+									span.innerHTML= data[0].acount  //+ '/'+ data[0].vcount
+									span = document.getElementById("like_"+data[0].cid);
+									span.innerHTML= ''+ data[0].zcount
+
+								}
+							}});
+
+
+
+		}
+
+
+		//显示本cid下所有的uid详细列表
+		function showCid(cid) {
+		
+			localStorage.setItem("gallerycid_show_skipnum",0);
+			localStorage.setItem("GalleryCid", cid);
+			location.href='./gallerycid_show.html'; 			
+			//window.open('./gallerycid_show.html');
+
+
+		}
+
+                function back() {
+                        window.history.go(-1);
+                }
+
+</script>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link rel="stylesheet" type="text/css" href="./css/aui.css" />
+		<meta charset="utf-8">
+		<meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+		<meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+		<title>login</title>
+		<link rel="stylesheet" type="text/css" href="./css/api.css"/>
+		<style>
+			body {
+				padding-top: 5rem;
+				padding-left: 2rem;
+				padding-right: 2rem;
+
+			}
+			.logoCss {
+				width: 15rem;
+				height: 15rem;
+			}
+			.loginForm {
+				position: relative;
+				margin: 3rem auto 0;
+				width: 18rem;
+				text-align: center;
+			}
+		</style>
+	</head>
+	<body>
+		<div>
+			<div align="center">
+				<img src="./image/l3.jpg" class="logoCss"/>
+				<div class="loginForm">
+					<div class="aui-form">
+						<div class="aui-input-row">
+							<i class="aui-input-addon  aui-iconfont aui-icon-people"></i>
+							<input type="text" class="aui-input" placeholder="账号" id="username">
+						</div>
+						<div class="aui-input-row">
+							<i class="aui-input-addon  aui-iconfont aui-icon-lock"></i>
+							<input type="password" class="aui-input" placeholder="密码" id="password">
+						</div>
+						<div class="aui-btn-row">
+							<div class="aui-btn aui-btn-success" id="login_submit" name="login_submit" >
+								登录
+							</div>
+							<div class="aui-btn aui-btn-warning" id="clear_storage" name="clear_storage" >
+								清除缓存
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!--
+			<div align="left">
+					<p>
+						
+						<i class="aui-pull-right aui-input-addon  aui-iconfont aui-icon-home" onclick="onSetServer()"></i>
+
+					</p>
+				
+			</div>
+			-->
+	</body>
+	<script type="text/javascript" src="./script/api.js"></script>
+	<script type="text/javascript" src="./script/jquery-3.1.0.js"></script>
+	<script type="text/javascript" src="./script/jquery.min.js"></script>
+	<script type="text/javascript" src="./script/aui-toast.js" ></script>
+	<script type="text/javascript" >
+			ServerHost = "http://61.155.203.88:8082" ;
+			localStorage.setItem("ServerHost", ServerHost);
+			//localStorage.setItem("username", "");
+			localStorage.setItem("uid", "");
+			var toast = new auiToast();
+			document.getElementById("username").value = localStorage.getItem('username') ;
+			//清除缓存
+			$("#clear_storage").click(function(){
+				if( confirm("确定清除缓存？") ) {
+						localStorage.clear();       
+							toast.success({
+								title:"清除成功",
+								duration:1000
+							});
+				}
+			});
+			//响应登录动作
+			$("#login_submit").click(function(){
+
+			var username = document.getElementById("username").value;
+			var password = document.getElementById("password").value;
+			if (username.length == 0 || password.length == 0) {
+			
+				toast.fail({
+					title:"请您输入用户名和密码!",
+					duration:1000
+				});
+				return false;
+			}
+
+				$.ajax({
+					"url" : ServerHost+"/mcm/api/user/login",
+					"type" : "POST",
+					"cache" : false,
+					"async" : false,
+					"data" : {
+						username : username,
+						password : password
+					},
+					success : function(data, status, header) {
+						console.log(data);
+						if( data.userId ) {
+							localStorage.setItem("username", username);
+							localStorage.setItem("uid", data.userId);
+							location.href='./html/main.html'; 
+						} else {
+							
+							//localStorage.setItem("username", "");
+							localStorage.setItem("uid", "");
+							toast.fail({
+								title:"登录出错，请换个密码试试!",
+								duration:1000
+							});
+						}
+					},
+					error : function(rst) {
+						
+						
+							toast.fail({
+								title:"登录出错",
+								duration:500
+							});
+						
+					}
+				});
+			});
+
+	</script>
+</html>
+	
+	
+	

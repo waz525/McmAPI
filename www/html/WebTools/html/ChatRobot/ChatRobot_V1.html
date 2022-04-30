@@ -1,0 +1,255 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<link rel="stylesheet" type="text/css" href="../../css/api.css"/>
+		<link rel="stylesheet" type="text/css" href="../../css/aui.css" />
+		<meta charset="utf-8">
+		<meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+		<meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+		<link rel="stylesheet" type="text/css" href="../../css/aui.2.0.css" />
+
+
+		<title>聊天室</title>
+	</head>
+	<body>
+		<header class="aui-bar aui-bar-nav" id="header">
+			<a class="aui-pull-left aui-btn" tapmode onclick="back()"> <span class="aui-iconfont aui-icon-left"></span> </a>
+			<div class="aui-title">
+				聊天室
+			</div>
+			<div class="aui-pull-right" onclick="GetMsgImmediate()" id="GetMsgImmediate" >
+				<span class="aui-iconfont aui-icon-refresh" ></span>
+			</div>
+			<div class="aui-pull-right" onclick="trashchat()" id="trashchat" >
+				<span class="aui-iconfont aui-icon-trash" ></span>
+			</div>
+		</header>
+		
+			<div id="searchDiv" style="z-index:999;bottom:70px;width: 100%;">
+		        <div class="aui-searchbar-input aui-border-radius"  >
+		            <i class="aui-iconfont aui-icon-pencil"></i>
+		            <form action="javascript:SendChatStr();">
+		                <input type="search" placeholder="请输入聊天内容" id="search-input">
+		            </form>
+		        </div>
+		    </div>
+
+		<div id="chatDiv" style=" overflow:auto;">
+
+					<section class="aui-chat" id="chatsection">
+					    <div class="aui-chat-item aui-chat-left">
+					        <div class="aui-chat-media">
+					            <img src="../../image/wall_robot.png" />
+					        </div>
+					        <div class="aui-chat-inner">
+								<div class="aui-chat-name">主持人</div>
+					            <div class="aui-chat-content"  >
+					                <div class="aui-chat-arrow"></div>
+					                可以开始聊天啦!
+					            </div>
+					            <div class="aui-chat-status aui-chat-status-refresh">
+					            </div>
+					        </div>
+					    </div>
+
+					</section>
+
+		</div>
+
+	</body>
+	<script type="text/javascript" src="../../script/api.js" ></script>
+	<script type="text/javascript" src="../../script/jquery-3.1.0.js"></script>
+	<script type="text/javascript" src="../../script/aui-toast.js" ></script>
+	<script type="text/javascript">
+		//未登陆即跳转到首页
+		if( ! localStorage.getItem('uid') ) {
+			location.href="../../index.html"; 
+		}
+		
+		var ServerHost = localStorage.getItem('ServerHost');
+		var uid = localStorage.getItem('username');
+		var MyPic = '../../image/l3.jpg'
+		var OtherPic = '../../image/wall_robot.png'
+		var toast = new auiToast();
+		var ctime = '1900-01-01 00:00:00' ;
+		init() ;
+		//每秒获取一次
+		window.setInterval(function() { setTimeout(function() {GetMsg() ; } , 0 ) },5000);
+	    function SendChatStr(){
+	        var searchValue = document.getElementById("search-input").value;
+	        if(searchValue){
+	            //alert("您输入的内容是:"+searchValue);
+				SendMsg(searchValue);
+				 document.getElementById("search-input").value = ""
+	        }
+	    }
+		function trashchat() {
+			
+			if( confirm("确定要清空所有聊天内容？") ) {
+			
+			
+				var filter = {
+				   	"where": {
+				    		"ctime": {"gte": "1900-01-01"}
+				   	}
+				}	
+					
+					$.ajax({
+						"url" : ServerHost+"/mcm/api/chatroom?filter=" + encodeURIComponent(JSON.stringify(filter)),
+						"method": "POST",
+						"cache": false,
+						"async":false,
+						"data":{
+							"_method":"DELETE"
+						},						
+						success : function(data, status, header) {
+							if(data) {
+								console.log(data) ;
+							}
+
+						},
+						error : function() {
+							alert("sms接口错误");
+						}
+					});
+				init() ;
+			}
+		}
+		
+		function GetMsgImmediate() {
+				
+			GetMsg() ;
+			toast.success({
+                    title:"刷新完成",
+                    duration:500
+                });
+		}
+		
+		function init() {
+			var chatsection = document.getElementById('chatsection');
+			 chatsection.innerHTML = '<div class="aui-chat-item aui-chat-left"> \
+					        <div class="aui-chat-media"> \
+					            <img src="../../image/wall_robot.png" /> \
+					        </div> \
+					        <div class="aui-chat-inner"> \
+								<div class="aui-chat-name">主持人</div> \
+					            <div class="aui-chat-content"  > \
+					                <div class="aui-chat-arrow"></div> \
+					                可以开始聊天啦! \
+					            </div> \
+					            <div class="aui-chat-status aui-chat-status-refresh"> \
+					            </div> \
+					        </div> \
+					    </div>'
+			ctime = '1900-01-01 00:00:00' ;		
+			GetMsg() ;
+			toast.success({
+                    title:"历史消息加载完成",
+                    duration:500
+                });
+		}
+
+		function GetMsg() {
+				var chatsection = document.getElementById('chatsection');
+				filter = {
+						'order' : 'ctime',
+						'limit': 10000,
+						'where': {
+							'ctime': { 'gt': ctime}
+						}
+					};
+				$.ajax({
+					"url" : ServerHost+"/mcm/api/chatroom?filter=" + encodeURIComponent(JSON.stringify(filter)),
+					success : function(data, status, header) {
+						console.log(data);
+						if (data.length > 0) {
+							for( var i = 0 ; i < data.length ; i++ ) {
+								innerHTML = ""
+								if( data[i].uid == uid ) {
+									innerHTML = '<div class="aui-chat-item aui-chat-right">\
+											<div class="aui-chat-media">\
+													<img src="'+MyPic+'" />\
+											</div>\
+											<div class="aui-chat-inner">\
+													<div class="aui-chat-name">'+data[i].uid+'</div> \
+													<div class="aui-chat-content"   >\
+															<div class="aui-chat-arrow"></div>\
+															'+data[i].content+'\
+													</div>\
+													<div class="aui-chat-status">\
+													</div>\
+											</div>\
+									</div>'
+								} else {
+									innerHTML = '<div class="aui-chat-item aui-chat-left">\
+											<div class="aui-chat-media">\
+													<img src="'+OtherPic+'" />\
+											</div>\
+											<div class="aui-chat-inner">\
+													<div class="aui-chat-name">'+data[i].uid+'</div> \
+													<div class="aui-chat-content"  >\
+															<div class="aui-chat-arrow"></div>\
+															'+data[i].content+'\
+													</div>\
+													<div class="aui-chat-status">\
+													</div>\
+											</div>\
+									</div>'
+								}
+								chatsection.innerHTML = chatsection.innerHTML + innerHTML
+								document.getElementById("chatDiv").scrollTop=document.getElementById("chatDiv").scrollHeight;
+								
+								ctime = data[i].ctime ;
+							}
+						}
+					}
+				});
+		}
+
+
+		//发送消息，添加信息并远程调用机器人回复
+		function SendMsg(msg) {
+				if(msg.length <= 0 ) {
+						
+						toast.success({
+							title:"发送不能为空！",
+							duration:500
+						});
+						return ;
+				}
+					var now = new Date();
+					var sdate = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate()+" "+now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
+					
+					$.ajax({
+						"url" : ServerHost+"/mcm/api/chatroom",
+						"method": "POST",
+						"cache": false,
+						"async":false,
+						"data":{
+							"uid":uid ,
+							"ctime":sdate,
+							"content":msg
+						},						
+						success : function(data, status, header) {
+							if(data) {
+								console.log(data) ;
+								toast.success({
+										title:"发送成功",
+										duration:500
+									});
+								GetMsg();
+							}
+
+						},
+						error : function() {
+							alert("sms接口错误");
+						}
+					});
+		}
+
+		
+		function back() {
+			window.history.go(-1);
+		}
+	</script>
+</html>

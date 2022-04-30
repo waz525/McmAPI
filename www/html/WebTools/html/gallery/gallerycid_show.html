@@ -1,0 +1,343 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,initial-scale=1.0,width=device-width"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>主题详情</title>
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+	<link rel="stylesheet" type="text/css" href="../../css/aui.2.0.css" />
+
+</head>
+<body>
+
+
+		<header class="aui-bar aui-bar-nav" id="header">
+			<a class="aui-pull-left aui-btn" tapmode onclick="back()"> <span class="aui-iconfont aui-icon-left"></span> </a>
+			<div class="aui-title" id='kbtitle' >
+			</div>
+
+			<div class="aui-pull-right" onclick="changePage()" id="laud" >
+				<i class="aui-iconfont aui-icon-like" id="landspan" ></i>
+			</div>
+		</header>
+
+
+			<div class="aui-content" id="kbListDiv">
+				<ul class="aui-list aui-media-list" id="kbListUl">
+				</ul>
+			</div>
+
+
+			<div class="aui-content aui-margin-b-15" id='bootDiv'>
+			    <ul class="aui-list aui-list-in">
+			        <li class="aui-list-item">
+			            <div class="aui-list-item-inner">
+			              <div class="aui-list-item-left aui-text-primary" id="pagenum" onclick="shownextpage()" >0/0</div>
+			              <div class="aui-list-item-left aui-text-primary" id="changeSkip"   onclick="changeSkip()">跳转</div>
+			              <div class="aui-list-item-left aui-text-primary" id="SearchStr"   onclick="SearchStr()">查询</div>
+			              <div class="aui-list-item-right"></div>
+			            </div>
+			        </li>
+				</ul>
+			</div>
+			<div style="z-index:999 ;width:64px; height: 64px; position:fixed;right:0;bottom:70px;background: url('../../image/up.png') no-repeat;" onclick="showlastpage()" ></div>
+			<div style="z-index:999 ;width:64px; height: 64px; position:fixed;right:0;bottom:0;background: url('../../image/down.png') no-repeat;"  onclick="shownextpage()" ></div>
+
+
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/jquery-3.1.0.js"></script>
+<script type="text/javascript" src="../../script/aui-toast.js" ></script>
+<script type="text/javascript">
+
+		//未登陆即跳转到首页
+		if( ! localStorage.getItem('uid') ) {
+			location.href="../../index.html"; 
+		}
+		
+	var GalleryHost = localStorage.getItem('GalleryHost');
+	var mmsite = localStorage.getItem('mmsite') ;
+	var limitnum = parseInt(localStorage.getItem('limitnum')) ;
+
+	if( ! GalleryHost ) {
+		GalleryHost= "http://61.155.203.114:8082" ;
+	}
+	if( ! mmsite ) {
+		mmsite = 'mmonly' ;
+	}
+	if( ! limitnum ) {
+		limitnum = 4 ;
+	}
+	
+			var toast = new auiToast();
+	var cid = localStorage.getItem('GalleryCid'); ;
+	var skipnum = parseInt( localStorage.getItem(mmsite+cid+"cid_show_skipnum")) ;
+        if( !skipnum )  skipnum = 0 ;
+	var allCount= 0 ;
+	var titleSearch = "";
+	
+	var cid = localStorage.getItem('GalleryCid'); 
+	var thisId = '0' ;
+	var thisStat = 0 ;
+	var landFlag = 0;
+	localStorage.setItem("landFlag",landFlag)
+		
+	$.ajaxSetup({
+		"cache" : false,
+		"async" : true
+	});
+	
+	
+	
+	
+	getAllCount();
+	init();
+	showlist();
+	
+	    function SearchStr(){
+			var searchValue = prompt("输入关键词：",titleSearch);
+	        if(searchValue){
+	            //alert("您输入的内容是:"+searchValue);
+	            titleSearch = searchValue ;
+	            var ul = document.getElementById('kbListUl');
+				ul.innerHTML=""
+				skipnum = 0
+				getAllCount()
+				showlist();
+	        }
+	    }
+
+		//修改skip，进行快速分页
+		function changeSkip() {
+						
+					a = parseInt(prompt("输入跳转条数("+allCount+")：",skipnum));
+					if( a>=0 ) {
+						skipnum = a ;
+						if( skipnum > allCount - limitnum ) skipnum = allCount - limitnum ;
+						var ul = document.getElementById('kbListUl');
+						ul.innerHTML=""
+						showlist()
+					}
+		}
+
+
+		function init() {
+
+			$('#kbtitle')[0].innerHTML = cid+ "";
+
+				filter = {
+						'where': {
+							'cid': cid
+						}
+					};
+
+			$.ajax({
+				"url" : GalleryHost+"/mcm/api/"+mmsite+"cid?filter=" + encodeURIComponent(JSON.stringify(filter)),
+				success : function(data, status, header) {
+					//alert(JSON.stringify(data))
+					if( data.length > 0 ) {
+						if( data[0].title != "" ) $('#kbtitle')[0].innerHTML = data[0].title ;
+						thisId  = data[0].id ;
+						thisStat = data[0].stat ;
+						if( thisStat == 0 ) {
+							$('#statSpan').removeClass("aui-icon-close");
+							$('#statSpan').removeClass("aui-icon-plus");
+							$('#statSpan').addClass("aui-icon-correct");
+						} else if( thisStat == 1 ) {
+							$('#statSpan').removeClass("aui-icon-correct");
+							$('#statSpan').removeClass("aui-icon-plus");
+							$('#statSpan').addClass("aui-icon-close");
+						}
+					}
+				},
+				error : function() {
+						toast.fail({
+							title:"查询接口错误",
+							duration:1000
+						});
+				}
+			});
+		}
+
+
+		//获取总条目数
+		function getAllCount() {
+				filter = {
+						'where': {
+							'zcount': { 'gte': landFlag},
+							'title': { 'like': titleSearch },
+							'cid': cid
+						}
+					};
+			$.ajax({
+				"url" : GalleryHost+"/mcm/api/"+mmsite+"/count?filter=" + encodeURIComponent(JSON.stringify(filter)),
+				success : function(data, status, header) {
+					//alert(JSON.stringify(data))
+					allCount = parseInt(data.COUNT);
+					document.getElementById('pagenum').innerHTML= ""+skipnum+"/"+allCount ;
+				},
+				error : function() {
+						toast.fail({
+							title:"查询接口错误",
+							duration:1000
+						});
+				}
+			});
+		}
+
+		//显示上一页
+		function showlastpage() {
+			if( skipnum > 0  ) {
+				skipnum = skipnum-limitnum ;
+				if(skipnum < 0  ) {
+					skipnum = 0 ;
+				}
+				showlist();
+			} else {
+				toast.fail({
+						title:"已经是首页！",
+						duration:1000
+					});
+			}
+		}
+		//显示下一页
+		function shownextpage() {
+			if( skipnum + limitnum < allCount ) {
+				skipnum = skipnum+limitnum;
+				showlist();
+			} else {
+				toast.fail({
+						title:"已经是尾页！",
+						duration:1000
+					});
+			}
+		}
+		
+		//向列表里增加条目
+		function showlist() {
+			localStorage.setItem(mmsite+cid+"cid_show_skipnum",skipnum);
+			
+			document.getElementById('pagenum').innerHTML= ""+skipnum+"/"+allCount ;
+			console.log("limitnum:"+limitnum+"; skipnum:"+skipnum+"; allCount:"+allCount+"; titleSearch:"+titleSearch+";")
+			
+			var ul = document.getElementById('kbListUl');
+			ul.innerHTML=""
+			//if( landFlag == 0 ) ul.innerHTML=""
+
+				filter = {
+						'order' : 'title',
+						'limit' : limitnum,
+						'skip' : skipnum,
+						//fields:["id", "imgcount", "title", "vcount","zcount" ,"thumb","ctime"],
+						'where': {
+							'zcount': { 'gte': landFlag},
+							'title': { 'like': titleSearch },
+							'cid': cid
+						}
+					};
+
+			$.ajax({
+				"url" : GalleryHost+"/mcm/api/"+mmsite+"?filter=" + encodeURIComponent(JSON.stringify(filter)),
+				success : function(data, status, header) {
+					//alert(JSON.stringify(data))
+					if (data.length > 0) {
+						for( var i = 0 ; i < data.length ; i++ ) {
+							var readTag = '<div id="hasRead'+data[i].id+'" class="aui-label aui-label-warning">未读</div>';
+							if( data[i].vcount != '0' ) {
+								readTag = '<div id="hasRead'+data[i].id+'" class="aui-label aui-label-info">已读</div>';
+							}
+							var li = document.createElement("li");
+							var li_css = document.createAttribute("class");
+							li_css.nodeValue = "aui-media-list-item-inner";
+							li.setAttributeNode(li_css);
+							var li_onclick = document.createAttribute("onclick");
+							li_onclick.nodeValue = "showImage('" + data[i].id + "', "+data[i].vcount+")" ;
+							li.setAttributeNode(li_onclick);
+							var innerHTML = '<div class="aui-media-list-item-inner" ><img style="width:4rem;height:6rem;" src="'+data[i].thumb+'"> </div>'+
+												'<div class="aui-list-item-inner"><div class="aui-list-item-text"><div class="aui-list-item-title">' +
+												'<em>'+readTag+'</em>&nbsp;' +
+												''+(data[i].type < 0 ?'[推荐]&nbsp;':'')+data[i].title+' ['+data[i].imgcount+']'+
+												'</div></div><div class="aui-info aui-margin-t-5"><div class="aui-info-item">' +
+												'&nbsp;<span >' + data[i].ctime + '</span>'
+
+							if( data[i].zcount != '0' ) {
+								innerHTML += '&nbsp;<span><em><i class="aui-iconfont aui-icon-like aui-text-danger"></i></em></span>'
+							}
+							innerHTML += '</div></div></div>'
+
+							li.innerHTML = innerHTML
+							ul.appendChild(li);
+						}
+
+					} else {
+						
+						toast.fail({
+							title:"没有查询到信息！！！",
+							duration:1000
+						});
+					}
+				},
+				error : function() {
+						toast.fail({
+							title:"查询接口错误",
+							duration:1000
+						});
+				}
+			});
+		}
+
+		//打开gallery_show
+		function showImage(uid,vcount) {
+
+									$.ajax({
+											"url" : GalleryHost+"/mcm/api/"+mmsite+"/"+uid,
+											"type": "POST",
+											"data": {
+												"vcount": vcount+1,
+												"_method":"PUT"
+											},
+											success : function(data, status, header) {
+												//alert(JSON.stringify(data))
+												//alert("更新信息成功！！！");
+
+											},
+											error : function() {
+												//alert("更新信息出错！！！");
+											}
+										});
+
+			$('#hasRead'+uid).removeClass("aui-label-info");
+			$('#hasRead'+uid).removeClass("aui-label-warning");
+			$('#hasRead'+uid)[0].innerHTML = "已读";
+
+			localStorage.setItem("GalleryUid", uid);
+			//location.href='./gallery_show.html';			
+			window.open('./gallery_show.html');
+
+		}
+		
+
+		function changePage() {
+			if( landFlag != 0 ) {
+				landFlag = 0
+				$('#landspan').removeClass("aui-text-danger");
+			} else {
+				landFlag = 1
+				$('#landspan').addClass("aui-text-danger");
+			}
+			localStorage.setItem("landFlag",landFlag)
+			var ul = document.getElementById('kbListUl');
+			ul.innerHTML=""
+			skipnum = 0
+			getAllCount()
+			showlist();
+
+		}
+
+		function back() {
+			window.history.go(-1);
+		}
+
+</script>
+</html>

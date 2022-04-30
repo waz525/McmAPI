@@ -1,0 +1,105 @@
+/*
+数据库操作类
+*/
+package Utils
+
+import (
+	"fmt"
+	"encoding/json"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
+	seelog "github.com/cihub/seelog"
+)
+
+//mysql配置参数
+type DBMethed struct {
+		Host		string
+		Port		string
+		Username	string
+		Password	string
+		Database	string
+		DBHandle	*sqlx.DB
+}
+
+//连接mysql数据库
+func (this *DBMethed) ConnDataBase() {
+	DBHandle, err := sqlx.Open("mysql", ""+this.Username+":"+this.Password+"@tcp("+this.Host+":"+this.Port+")/"+this.Database+"")
+	if err != nil {
+		seelog.Critical("Open Mysql failed,", err) ; seelog.Flush()
+		return
+	}
+	DBHandle.SetMaxOpenConns(200)
+	DBHandle.SetMaxIdleConns(20)
+	this.DBHandle = DBHandle
+}
+
+//关闭数据库连接
+func (this *DBMethed) Close() {
+	if this.DBHandle != nil	{
+		this.DBHandle.Close()
+	}
+}
+
+func (this *DBMethed) Query(sql string) string {
+	if this.DBHandle  == nil {
+		this.ConnDataBase()
+	}
+	seelog.Debug("Query Sql:", sql) ; seelog.Flush()
+	var rst []map[string]interface{} ;
+	rows, err := this.DBHandle.Query(sql)
+	if err != nil {
+		seelog.Critical("Query Sql Failed,", err); seelog.Flush()
+		return  "[]"
+	}
+	columns, _ := rows.Columns()
+	scanArgs := make([]interface{}, len(columns))
+	values := make([]interface{}, len(columns))
+	for i := range values {
+		scanArgs[i] = &values[i]
+	}
+	for rows.Next() {
+		err = rows.Scan(scanArgs...) ;
+		//record := make(map[string]string) ;
+		record := make(map[string]interface{}) ;
+		for i, col := range values {
+			if col != nil {
+				record[columns[i]] = col.(interface{}) 
+			}
+		}
+		rst = append(rst, record)
+	}
+	data ,_:= json.Marshal(rst)
+	return string(data)
+
+}
+
+func (this *DBMethed) QueryById(TableName, ObjectID string) string {
+	if this.DBHandle  == nil {
+		this.ConnDataBase()
+	}
+	sql := "select * from "+TableName+" where id = '"+ObjectID+"' "
+	seelog.Debug("Query Sql:", sql) ; seelog.Flush()
+	rows, _ := this.DBHandle.Query(sql)
+	columns, _ := rows.Columns()
+	scanArgs := make([]interface{}, len(columns))
+	values := make([]interface{}, len(columns))
+	for i := range values {
+		scanArgs[i] = &values[i]
+	}
+	for rows.Next() {
+		rows.Scan(scanArgs...) ;
+		fmt.Println(values)
+		record := make(map[string]interface{}) ;
+		for i, col := range values {
+			if col != nil {
+				record[columns[i]] = string(col.([]byte))
+			}
+		}
+		data ,_:= json.Marshal(record)
+		return string(data)
+	}
+	return "{}"
+}
+
+
+

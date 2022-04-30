@@ -1,0 +1,54 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,width=device-width,initial-scale=1.0"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>WebTools</title>
+    <link rel="stylesheet" type="text/css" href="../css/aui.2.0.css" />
+</head>
+<body>
+    <section class="aui-grid aui-margin-b-15">
+        <div class="aui-row aui-text-center">
+            <div class="aui-col-xs-3" onclick="OpenWeb('./gallery/gallerycid_index.html')" id="gallery">
+                <img class="aui-iconfont aui-text-pink" src="../image/girls.png" />
+                <div class="aui-grid-label">图库</div>
+            </div>
+            <div class="aui-col-xs-3" onclick="OpenWeb('./ClassInfo/ClassInfo.html')" id="gallery">
+                <img class="aui-iconfont aui-text-pink" src="../image/classinfo.png" />
+                <div class="aui-grid-label">课程记录</div>
+            </div>
+        <div class="aui-col-xs-3" onclick="OpenWeb('./ChatRobot/ChatRobot_iPhone.html')">
+		    	<img class="aui-iconfont aui-text-pink" src="../image/chat.png" />
+				  <div class="aui-grid-label">聊天室</div>
+		    </div>
+        <div class="aui-col-xs-3" onclick="OpenWeb('./ChatRobot/ChatRobot_V1.html')">
+		    	<img class="aui-iconfont aui-text-pink" src="../image/chat.png" />
+				  <div class="aui-grid-label">聊天室V1</div>
+		    </div>
+        </div>
+    </section>
+
+			<div class="aui-btn aui-btn-danger aui-btn-block aui-btn-sm" onclick="app_logout()" >
+				退出
+			</div>
+    </body>
+<script type="text/javascript" src="../script/api.js"></script>
+<script type="text/javascript" src="../script/vue.min.js"></script>
+
+<script type="text/javascript">
+	if( ! localStorage.getItem('uid') ) {
+		location.href="../index.html"; 
+	}
+	
+
+    function OpenWeb(url) {
+		location.href=url; 
+    }
+	function app_logout() {
+		location.href="../index.html"; 
+    }
+</script>
+
+

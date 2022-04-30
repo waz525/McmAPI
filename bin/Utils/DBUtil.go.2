@@ -1,0 +1,184 @@
+/*
+数据库操作类
+*/
+package Utils
+
+import (
+	"fmt"
+	"encoding/json"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
+//	"database/sql"
+	seelog "github.com/cihub/seelog"
+)
+
+//mysql配置参数
+type DBMethed struct {
+		Host		string
+		Port		string
+		Username	string
+		Password	string
+		Database	string
+		DBHandle	*sqlx.DB
+}
+
+
+
+//连接mysql数据库
+func (this *DBMethed) ConnDataBase() {
+	DBHandle, err := sqlx.Open("mysql", ""+this.Username+":"+this.Password+"@tcp("+this.Host+":"+this.Port+")/"+this.Database+"")
+	if err != nil {
+		seelog.Critical("Open Mysql failed,", err) ; seelog.Flush()
+		return
+	}
+	DBHandle.SetMaxOpenConns(200)
+	DBHandle.SetMaxIdleConns(20)
+	this.DBHandle = DBHandle
+}
+
+//关闭数据库连接
+func (this *DBMethed) Close() {
+	if this.DBHandle != nil	{
+		this.DBHandle.Close()
+	}
+}
+
+//普通查询数据
+func (this *DBMethed) QuerySql(sql string) string {
+	return this.Query2JSON(sql, false)
+
+}
+
+//根据id查询单条数据
+func (this *DBMethed) QueryById(TableName, ObjectID string) string {
+	sql := "select * from "+TableName+" where id = '"+ObjectID+"' "
+	seelog.Debug("Query Sql:", sql) ; seelog.Flush()
+	return this.Query2JSON(sql, true)
+}
+
+//查询数据量
+func (this *DBMethed) QueryCount(TableName, WhereStr string) string {
+	sql := "select count(1) as COUNT from "+TableName+ " where "+WhereStr ;
+	seelog.Debug("QueryCount Sql:", sql); seelog.Flush()
+	return this.Query2JSON(sql, true)
+
+}
+
+//查询并转换成json,oneFlag判断返回单个json或json数组
+func (this *DBMethed) Query2JSON(sqlString string , oneFlag bool) string {
+	if this.DBHandle == nil {
+		this.ConnDataBase()
+	}
+	stmt, err := this.DBHandle.Prepare(sqlString)
+	if err != nil {
+		return "{\"ERROR\":\""+err.Error()+"\"}"
+	}
+	defer stmt.Close()
+	rows, err := stmt.Query()
+	if err != nil {
+		return "{\"ERROR\":\""+err.Error()+"\"}"
+	}
+	defer rows.Close()
+	columns, err := rows.Columns()
+	if err != nil {
+		return "{\"ERROR\":\""+err.Error()+"\"}"
+	}
+	count := len(columns)
+	tableData := make([]map[string]interface{}, 0)
+	values := make([]interface{}, count)
+	valuePtrs := make([]interface{}, count)
+	for rows.Next() {
+		for i := 0; i < count; i++ {
+			valuePtrs[i] = &values[i]
+		}
+		rows.Scan(valuePtrs...)
+		entry := make(map[string]interface{})
+		for i, col := range columns {
+			var v interface{}
+			val := values[i]
+			b, ok := val.([]byte)
+			if ok {
+				v = string(b)
+			} else {
+				v = val
+			}
+			entry[col] = v
+		}
+		tableData = append(tableData, entry)
+	}
+	rst := ""
+	if oneFlag && len(tableData) > 0 {
+		jsonData, err := json.Marshal(tableData[0])
+		if err != nil {
+			return "{\"ERROR\":\""+err.Error()+"\"}"
+		}
+		rst = string(jsonData)
+	} else {
+		jsonData, err := json.Marshal(tableData)
+		if err != nil {
+			return "{\"ERROR\":\""+err.Error()+"\"}"
+		}
+		rst = string(jsonData)
+	}
+	return rst
+}
+
+
+//执行sql，包括insert,update,delete,create,alter,drop等
+func (this *DBMethed) ExecSql(sql string) string {
+	if this.DBHandle == nil {
+		this.ConnDataBase()
+	}
+	seelog.Debug("Exec Sql:", sql); seelog.Flush()
+	stmt,err := this.DBHandle.Prepare(sql)
+	if err != nil {
+		return "{\"ERROR\":\""+err.Error()+"\"}"
+	}
+	rst, err := stmt.Exec()
+	if err != nil {
+		return "{\"ERROR\":\""+err.Error()+"\"}"
+	}
+	num, err := rst.RowsAffected()
+	if err != nil {
+		return "{\"ERROR\":\""+err.Error()+"\"}"
+	}
+	return "{\"ChageLine\":"+Itoa(num)+"}"
+}
+
+//查询表字段，返回字段数组
+func (this *DBMethed) QueryFields(TableName string) string {
+
+	if this.DBHandle == nil {
+		this.ConnDataBase()
+	}
+
+	sqlString := "select * from "+TableName+" where 1 = 2 "
+
+	seelog.Debug(sqlString) ; seelog.Flush();
+	stmt, err := this.DBHandle.Prepare(sqlString)
+	if err != nil {
+		return "{\"ERROR\":\""+err.Error()+"\"}"
+	}
+	defer stmt.Close()
+	rows, err := stmt.Query()
+	if err != nil {
+		return "{\"ERROR\":\""+err.Error()+"\"}"
+	}
+	defer rows.Close()
+	columns, err := rows.Columns()
+	if err != nil {
+		return "{\"ERROR\":\""+err.Error()+"\"}"
+	}
+
+	var rst map[string][]string
+	rst = make(map[string][]string)
+	rst["Fields"] = columns
+
+	fmt.Println(rst)
+	jsonData, err := json.Marshal(rst)
+	if err != nil {
+		return "{\"ERROR\":\""+err.Error()+"\"}"
+	}
+	return string(jsonData)
+
+}

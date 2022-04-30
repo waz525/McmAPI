@@ -1,0 +1,302 @@
+<!DOCTYPE html>  
+<html>  
+<head>  
+    <meta charset="UTF-8">  
+    <title>聊天室</title>  
+    <style>  
+  /**重置标签默认样式*/
+      * {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            font-family: '微软雅黑'
+        }
+        #container {
+            width: 950px;
+            height: 1380px;
+            background: #eee;
+            margin: 0px auto 0;
+            position: relative;
+            box-shadow: 20px 20px 55px #777;
+        }
+        .header {
+            background: #000;
+            height: 40px;
+            color: #fff;
+            line-height: 34px;
+            font-size: 20px;
+            padding: 0 10px;
+        }
+        .footer {
+            width: 930px;
+            height: 50px;
+            background: #666;
+            position: absolute;
+            bottom: 0;
+            padding: 10px;
+        }
+        .footer input {
+            width: 775px;
+            height: 45px;
+            outline: none;
+            font-size: 20px;
+            text-indent: 10px;
+            position: absolute;
+            border-radius: 6px;
+            right: 80px;
+        }
+        .footer span {
+            display: inline-block;
+            width: 62px;
+            height: 48px;
+            background: #ccc;
+            font-weight: 900;
+            line-height: 45px;
+            cursor: pointer;
+            text-align: center;
+            position: absolute;
+            right: 10px;
+            border-radius: 6px;
+        }
+        .footer span:hover {
+            color: #fff;
+            background: #999;
+        }
+        #user_face_icon {
+            display: inline-block;
+            background: red;
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            position: absolute;
+            bottom: 6px;
+            left: 14px;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        img {
+            width: 60px;
+            height: 60px;
+        }
+        .content {
+            font-size: 20px;
+            width: 935px;
+            height: 1262px;
+            overflow: auto;
+            padding: 5px;
+        }
+        .content li {
+            margin-top: 10px;
+            padding-left: 10px;
+            width: 912px;
+            display: block;
+            clear: both;
+            overflow: hidden;
+        }
+        .content li img {
+            float: left;
+        }
+        .content li span{
+            background: #7cfc00;
+            padding: 10px;
+            border-radius: 10px;
+            float: left;
+            margin: 6px 10px 0 10px;
+            max-width: 810px;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 3px #ccc;
+        }
+        .content li img.imgleft {
+            float: left;
+        }
+        .content li img.imgright {
+            float: right;
+        }
+        .content li span.spanleft {
+            float: left;
+            background: #fff;
+        }
+        .content li span.spanright {
+            float: right;
+            background: #7cfc00;
+        }
+
+    </style> 
+</head>  
+<body>  
+    <div id="container">  
+        <div class="header">  
+            <span style="float: center;" onclick="trashchat();" >聊天室</span>  
+            <span style="float: right;" id="header_right"  onclick="GetMsgImmediate();" ></span>  
+        </div>  
+        <ul class="content" id="contentUL">  
+		</ul>  
+        <div class="footer">  
+            <div id="user_face_icon">  
+                <img src="../../image/l3.jpg" alt="">  
+            </div>  
+            <input id="send-input" type="text" placeholder="请输入聊天内容">  
+            <span id="btn" onclick="SendChatStr();">发送</span>  
+        </div>  
+    </div>  
+</body> 
+ 
+	<script type="text/javascript" src="../../script/jquery-3.1.0.js"></script>
+    <script type="text/javascript">  
+		//未登陆即跳转到首页
+		if( ! localStorage.getItem('uid') ) {
+			location.href="../../index.html"; 
+		}
+		
+		
+		var ServerHost = localStorage.getItem('ServerHost');
+		var uid = localStorage.getItem('username');
+		var MyPic = '../../image/l3.jpg'
+		var OtherPic = '../../image/wall_robot.png';
+		var ctime = '1900-01-01 00:00:00' ;
+		var IntervalFlagInit = 9 ;
+		var IntervalFlag = IntervalFlagInit ;
+		init() ;
+		GetMsgInterval() ; 
+		//每秒获取一次
+		window.setInterval(function() { setTimeout(function() {GetMsgInterval() ; } , 0 ) },1000);
+		function GetMsgInterval() {
+			//console.log("document.body.clientWidth: "+window.innerWidth+" ; document.body.clientHeight: "+window.innerHeight);
+			var header_right = document.getElementById('header_right');
+			header_right.innerHTML = ""+IntervalFlag+"秒后同步";
+			IntervalFlag = IntervalFlag - 1 ;
+			console.log("IntervalFlag: "+IntervalFlag);
+			if( IntervalFlag < 0 ) {
+				GetMsgImmediate();
+			}
+		}
+		
+		function trashchat() {
+			
+			if( confirm("确定要清空所有聊天内容？") ) {
+			
+			
+				var filter = {
+				   	"where": {
+				    		"ctime": {"gte": "1900-01-01"}
+				   	}
+				}	
+					
+					$.ajax({
+						"url" : ServerHost+"/mcm/api/chatroom?filter=" + encodeURIComponent(JSON.stringify(filter)),
+						"method": "POST",
+						"cache": false,
+						"async":false,
+						"data":{
+							"_method":"DELETE"
+						},						
+						success : function(data, status, header) {
+							if(data) {
+								console.log(data) ;
+							}
+
+						},
+						error : function() {
+							alert("sms接口错误");
+						}
+					});
+				init() ;
+			}
+		}
+		
+		function GetMsgImmediate() {
+			var header_right = document.getElementById('header_right');
+			header_right.innerHTML = "同步中...";
+			GetMsg();
+			header_right.innerHTML = "同步完成";
+		}
+		
+		function init() {
+		
+			var chatsection = document.getElementById('contentUL');
+			chatsection.innerHTML = '<li><img src="'+OtherPic+'" class="imgleft"><span class="spanleft">欢迎进入聊天室！</span></li>'
+			ctime = '1900-01-01 00:00:00' ;		
+			GetMsgImmediate() ;
+		}
+
+		function GetMsg() {
+				var chatsection = document.getElementById('contentUL');
+				filter = {
+						'order' : 'ctime',
+						'limit': 10000,
+						'where': {
+							'ctime': { 'gt': ctime}
+						}
+					};
+				$.ajax({
+					"url" : ServerHost+"/mcm/api/chatroom?filter=" + encodeURIComponent(JSON.stringify(filter)),
+					success : function(data, status, header) {
+						console.log(data);
+						if (data.length > 0) {
+							for( var i = 0 ; i < data.length ; i++ ) {
+								innerHTML = ""
+								if( data[i].uid == uid ) {
+									innerHTML = '<li><img src="'+MyPic+'" class="imgright"><span class="spanright">'+data[i].content+'【'+data[i].uid+'】</span></li>' ;
+								} else {
+									innerHTML = '<li><img src="'+OtherPic+'" class="imgleft"><span class="spanleft">'+data[i].content+'【'+data[i].uid+'】</span></li>' ;
+								}
+								chatsection.innerHTML += innerHTML
+								// 内容过多时,将滚动条放置到最底端 
+								chatsection.scrollTop=chatsection.scrollHeight; 
+								ctime = data[i].ctime ;
+							}
+						}
+					}
+				});
+				
+				IntervalFlag = IntervalFlagInit ;
+		}
+
+
+	    function SendChatStr(){
+	        var searchValue = document.getElementById("send-input").value;
+	        if(searchValue){
+	            //alert("您输入的内容是:"+searchValue);
+				SendMsg(searchValue);
+				 document.getElementById("send-input").value = ""
+	        } else {
+				alert("发送不能为空！");
+			}
+	    }
+		
+		//发送消息，并同步信息
+		function SendMsg(msg) {
+					var now = new Date();
+					var sdate = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate()+" "+now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
+					
+					$.ajax({
+						"url" : ServerHost+"/mcm/api/chatroom",
+						"method": "POST",
+						"cache": false,
+						"async":false,
+						"data":{
+							"uid":uid ,
+							"ctime":sdate,
+							"content":msg
+						},						
+						success : function(data, status, header) {
+							if(data) {
+								console.log(data) ;
+								GetMsgImmediate();
+							} else {
+								alert("发送信息失败！");
+							}
+
+						},
+						error : function() {
+							alert("sms接口错误");
+						}
+					});
+		}
+
+		
+		function back() {
+			window.history.go(-1);
+		}
+    </script>   
+</html>  

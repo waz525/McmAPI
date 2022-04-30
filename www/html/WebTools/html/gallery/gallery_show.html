@@ -1,0 +1,323 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0,minimum-scale=1.0,user-scalable=0,initial-scale=1.0,width=device-width"/>
+    <meta name="format-detection" content="telephone=no,email=no,date=no,address=no">
+    <title>图片详情</title>
+    <link rel="stylesheet" type="text/css" href="../../css/api.css" />
+	<link rel="stylesheet" type="text/css" href="../../css/aui.2.0.css" />
+
+</head>
+<body>
+
+	<header class="aui-bar aui-bar-nav" id="header" >
+			<a class="aui-pull-left aui-btn" tapmode onclick="back()"> <span class="aui-iconfont aui-icon-left"></span> </a>
+			<div class="aui-title" id='kbtitle' onclick="showNextPage()">
+			</div>
+			<div class="aui-pull-right" onclick="laud()" id="laud" >
+				<i class="aui-iconfont aui-icon-like" id='landspan' ></i>
+			</div>
+		</header>
+
+			<div id="kbDiv"  >
+			</div>
+			
+			<div class="aui-content aui-margin-b-15" id='bootDiv' style="display:none">
+			    <ul class="aui-list aui-list-in">
+			        <li class="aui-list-item">
+			            <div class="aui-list-item-inner">
+			              <div class="aui-list-item-left aui-text-primary" id="readnum" style="display:none"  onclick="showNextPage()">阅读次数</div>
+			              <div class="aui-list-item-left aui-text-primary"  style="display:none" id="showImageDiv"   onclick="showImgDiv()">显示更多</div>
+			              <div class="aui-list-item-left aui-text-primary"  style="display:none" id="showAllImageDiv"   onclick="imgPagesize = 1000 ;showImgDiv();">显示全部</div>
+				       
+			              <div class="aui-list-item-center" onclick="laud()" ><i class="aui-iconfont aui-icon-like" id='landspan_bottom' ></i></div>
+			              <div class="aui-list-item-right"></div>
+			            </div>
+			        </li>
+				</ul>
+			</div>
+			<div style="z-index:999 ;width:64px; height: 64px; position:fixed;right:0;bottom:70px;background: url('../../image/up.png') no-repeat;" onclick="showLastPage()" ></div>
+			<div style="z-index:999 ;width:64px; height: 64px; position:fixed;right:0;bottom:0;background: url('../../image/down.png') no-repeat;"  onclick="showNextPage()" ></div>
+
+		
+
+</body>
+<script type="text/javascript" src="../../script/api.js"></script>
+<script type="text/javascript" src="../../script/vue.min.js"></script>
+<script type="text/javascript" src="../../script/jquery-3.1.0.js"></script>
+<script type="text/javascript">
+		//未登陆即跳转到首页
+		if( ! localStorage.getItem('uid') ) {
+			location.href="../../index.html"; 
+		}
+		
+
+		var GalleryHost = localStorage.getItem('GalleryHost');
+		var mmsite = localStorage.getItem('mmsite') ;
+		var imgPagesize = parseInt(localStorage.getItem('imgPagesize')) ;
+		if( ! GalleryHost ) {
+			GalleryHost= "http://61.155.203.114:8082" ;
+		}
+		if( ! mmsite ) {
+			mmsite = 'mmonly' ;
+		}
+		if( ! imgPagesize ) {
+			imgPagesize = 4 ;
+		}
+		
+		var cid = localStorage.getItem('GalleryCid'); 
+		var uid = localStorage.getItem('GalleryUid'); 
+		
+		Query_mmsite = getQueryVariable("mmsite");
+		Query_cid = getQueryVariable("cid");
+		Query_uid = getQueryVariable("uid");
+		if( Query_mmsite ) mmsite = Query_mmsite ;
+		if( Query_cid ) cid = Query_cid ;
+		if( Query_uid ) uid = Query_uid ;
+		
+		console.log("mmsite: "+mmsite+", cid: "+cid+", uid: "+uid);
+		
+		var zcount = 0 ;
+		var ctime = '0';
+		var showNextFlag = 0 ;
+		var title = '';
+		var imgIndex = 0 ;
+		var imgData = null ;
+			
+		$.ajaxSetup({
+			"cache" : false,
+			"async" : true
+		});
+		
+	
+		init();
+		showlist() ;
+
+	
+		function showLastPage() {
+
+				var landFlag = localStorage.getItem('landFlag');
+					filter = {
+						'order' : 'title desc' ,
+						'limit' : 1,
+						'where': {
+							'zcount': { 'gte': landFlag },
+							'title' :{ 'lt':  title },
+							'cid':cid
+						}
+					};
+
+			$.ajax({
+				"url" : GalleryHost+"/mcm/api/"+mmsite+"?filter=" + encodeURIComponent(JSON.stringify(filter)),
+				success : function(data, status, header) {
+					if (data.length > 0) {
+						showImage(data[0].id, data[0].vcount)
+					} else {
+						alert('这是最后一条记录！')
+					}
+				}
+			});
+		}
+
+	
+		function showNextPage() {
+
+					var landFlag = localStorage.getItem('landFlag');
+					filter = {
+						'order' : 'title' ,
+						'limit' : 1,
+						'where': {
+							'zcount': { 'gte': landFlag },
+							'title' :{ 'gt':  title },
+							'cid':cid
+						}
+					};
+
+			$.ajax({
+				"url" : GalleryHost+"/mcm/api/"+mmsite+"?filter=" + encodeURIComponent(JSON.stringify(filter)),
+				success : function(data, status, header) {
+					if (data.length > 0) {
+						showImage(data[0].id, data[0].vcount)
+					} else {
+						alert('这是第一条记录！')
+					}
+				}
+			});
+		}
+
+	
+		function showImage(uid,vcount) {
+
+									$.ajax({
+											"url" : GalleryHost+"/mcm/api/"+mmsite+"/"+uid,
+											"type": "POST",
+											"data": {
+												"vcount": vcount+1,
+												"_method":"PUT"
+											},
+											success : function(data, status, header) {
+												//alert(JSON.stringify(data))
+												//alert("更新信息成功！！！");
+
+											},
+											error : function() {
+												//alert("更新信息出错！！！");
+											}
+										});
+
+
+
+			
+			//localStorage.setItem("GalleryUid", uid);
+			//location.href='./gallery_show.html';
+
+			location.href='./gallery_show.html?mmsite='+mmsite+'&cid='+cid+'&uid='+uid;
+
+
+		}
+
+
+		function init() {
+
+			$.ajax({
+				"url" : GalleryHost+"/mcm/api/"+mmsite+"/"+uid,
+				success : function(data, status, header) {
+					//alert(JSON.stringify(data))
+					$('#kbtitle')[0].innerHTML = data.title;
+					$('#readnum')[0].innerHTML = '阅读次数 ' + data.vcount;
+					title = data.title;
+					//document.getElementsByTagName("title")[0].innerText = data.title;
+
+					cid = data.cid ;
+					zcount = data.zcount ;
+					ctime = data.ctime ;
+
+					if( zcount > 0 ) {
+						$('#landspan').addClass("aui-text-danger");
+						$('#landspan_bottom').addClass("aui-text-danger");
+					}
+
+				},
+				error : function() {
+					alert("查询接口错误");
+				}
+			});
+		}
+
+		function showlist() {
+			var kbDiv = document.getElementById('kbDiv');
+			kbDiv.innerHTML=""
+
+			filter = {
+					'order' : 'ctime',
+					'limit' : 100,
+					fields:["imgurl"],
+					'where' : {
+						'uid': uid
+					}
+				};
+			$.ajax({
+				"url" : GalleryHost+"/mcm/api/"+mmsite+"img?filter=" + encodeURIComponent(JSON.stringify(filter)),
+				success : function(data, status, header) {
+					if (data.length > 0) {
+
+						imgData = data ;
+						imgIndex = 0 ;
+						showImgDiv();
+						$("#bootDiv").show();
+						
+					} else {
+						alert("没有查询到信息！！！");
+					}
+
+					$("#ClassAddDiv").show();
+				},
+				error : function() {
+					alert("查询接口错误");
+				}
+			});
+		}
+		
+		function showImgDiv() {
+						
+			var kbDiv = document.getElementById('kbDiv');
+			var i ;
+			for(  i = imgIndex ; i < ( imgIndex+imgPagesize < imgData.length?imgIndex+imgPagesize:imgData.length ) ; i++ ) {
+				innerHTML = '<section class="aui-content"><div class="aui-card-list-content"><img src="'+imgData[i].imgurl+'" onclick="ShowDetail(\''+imgData[i].imgurl+'\')"  /><p>&nbsp;</p></div></section>'
+				kbDiv.innerHTML=kbDiv.innerHTML + innerHTML;
+			}
+			
+			imgIndex=i;
+			console.log(imgIndex);
+			if( imgIndex < imgData.length ) {
+				$('#showImageDiv')[0].innerHTML = '显示更多('+imgIndex +"/"+ imgData.length+")" ;
+				$("#showImageDiv").show();
+				$("#showAllImageDiv").show();
+				$("#readnum").hide();
+			} else {
+				$("#readnum").show();
+				$("#showAllImageDiv").hide();
+				$("#showImageDiv").hide();
+			}
+		}
+
+		function ShowDetail(imgurl) {
+			window.open(imgurl);
+		}
+
+		function laud() {
+
+			msgstr = '点赞成功'
+			if ( zcount > 0 ) {
+				$('#landspan').removeClass("aui-text-danger");
+				$('#landspan_bottom').removeClass("aui-text-danger");
+				msgstr = '取消点赞'
+				zcount = 0
+			} else {
+				zcount += 1
+				$('#landspan').addClass("aui-text-danger");
+				$('#landspan_bottom').addClass("aui-text-danger");
+			}
+
+
+						$.ajax({
+							"url" : GalleryHost+"/mcm/api/"+mmsite+"/"+uid,
+							"type": "POST",
+							"data": {
+								"zcount": zcount,
+								"_method":"PUT"
+							},
+							success : function(data, status, header) {
+								//alert(JSON.stringify(data))
+							},
+							error : function() {
+								alert("更新信息出错！！！");
+							}
+						});
+
+
+
+		}
+
+		function getQueryVariable(variable)
+		{
+			   var query = window.location.search.substring(1);
+			   var vars = query.split("&");
+			   for (var i=0;i<vars.length;i++) {
+					   var pair = vars[i].split("=");
+					   if(pair[0] == variable){return pair[1];}
+			   }
+			   return(false);
+		}
+
+
+		function back() {
+			window.history.go(-1);
+			window.opener=null;
+			window.open('','_self');
+			window.close();
+		}
+
+</script>
+</html>
